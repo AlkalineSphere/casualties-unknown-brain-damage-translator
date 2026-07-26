@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brain Damage Translator</title>
+<style>
+body {
+    font-family: monospace;
+    background: #111;
+    color: #eee;
+    padding: 30px;
+}
+textarea, #output {
+    width: 100%;
+    min-height: 150px;
+    background: #222;
+    color: white;
+    border: 1px solid #555;
+    padding: 15px;
+    font-size: 18px;
+    box-sizing: border-box;
+}
+label {
+    display: block;
+    margin-top: 20px;
+}
+input {
+    width: 300px;
+}
+#stats {
+    margin-top: 10px;
+    color: #aaa;
+}
+</style>
+</head>
+<body>
+<h1>Brain Damage Translator</h1>
+<label>
+Brain Integrity:
+<input id="integrity" type="range" min="0" max="100" value="100">
+<span id="value">100%</span>
+</label>
+<div id="stats"></div>
+<h2>Input</h2>
+<textarea id="input">
+Enter text here.
+</textarea>
+<h2>Output</h2>
+<div id="output"></div>
+<script>
+const symbols = [
+    "@", "#", "!", "&",
+];
+const integritySlider = document.getElementById("integrity");
+const input = document.getElementById("input");
+const output = document.getElementById("output");
+const value = document.getElementById("value");
+const stats = document.getElementById("stats");
+function clamp(num, min, max) {
+    return Math.max(min, Math.min(max, num));
+}
+function calculateSymbolChance(integrity) {
+    return clamp((95 - integrity) / (95 - 0), 0, 1);
+}
+function calculateBlockChance(integrity) {
+    return clamp((50 - integrity) / 50, 0, 1);
+}
+function randomSymbol() {
+    return symbols[Math.floor(Math.random() * symbols.length)];
+}
+function corruptText(text, integrity) {
+    const symbolChance = calculateSymbolChance(integrity);
+    const blockChance = calculateBlockChance(integrity);
+    let result = "";
+    for (const char of text) {
+        if (char === " " || char === "\n" || char === "\t") {
+            result += char;
+            continue;
+        }
+        let newChar = char;
+        if (Math.random() < blockChance) {
+            newChar = "█";
+        }
+        else if (Math.random() < symbolChance) {
+            newChar = randomSymbol();
+        }
+        result += newChar;
+    }
+    return result;
+}
+function update() {
+    const integrity = Number(integritySlider.value);
+    value.textContent = integrity + "%";
+    const symbolChance = calculateSymbolChance(integrity);
+    const blockChance = calculateBlockChance(integrity);
+    output.textContent = corruptText(
+        input.value,
+        integrity
+    );
+}
+integritySlider.addEventListener("input", update);
+input.addEventListener("input", update);
+update();
+</script>
+</body>
+</html>
