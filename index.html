@@ -25,7 +25,7 @@ label {
     display: block;
     margin-top: 20px;
 }
-input {
+input[type="range"] {
     width: 300px;
 }
 #stats {
@@ -41,15 +41,37 @@ input {
     <input id="integrity" type="range" min="0" max="100" value="100">
     <span id="value">100%</span>
 </label>
+<h3>Symbol Settings</h3>
 <label>
     Symbol Threshold:
     <input id="symbolOnset" type="range" min="0" max="100" value="95">
     <span id="symbolOnsetValue">95%</span>
 </label>
 <label>
+    Symbol Cap:
+    <input id="symbolCap" type="range" min="0" max="100" value="50">
+    <span id="symbolCapValue">50%</span>
+</label>
+<label>
+    Symbol Max:
+    <input id="symbolMax" type="range" min="0" max="100" value="0">
+    <span id="symbolMaxValue">0%</span>
+</label>
+<h3>Block Settings</h3>
+<label>
     Block Threshold:
     <input id="blockOnset" type="range" min="0" max="100" value="50">
     <span id="blockOnsetValue">50%</span>
+</label>
+<label>
+    Block Cap:
+    <input id="blockCap" type="range" min="0" max="100" value="100">
+    <span id="blockCapValue">100%</span>
+</label>
+<label>
+    Block Max:
+    <input id="blockMax" type="range" min="0" max="100" value="0">
+    <span id="blockMaxValue">0%</span>
 </label>
 <div id="stats"></div>
 <h2>Input</h2>
@@ -61,59 +83,124 @@ const symbols = [
     "@", "#", "!", "&",
 ];
 const integritySlider = document.getElementById("integrity");
-const symbolOnsetSlider = document.getElementById("symbolOnset");
-const blockOnsetSlider = document.getElementById("blockOnset");
-const input = document.getElementById("input");
-const output = document.getElementById("output");
-const value = document.getElementById("value");
-const symbolOnsetValue = document.getElementById("symbolOnsetValue");
-const blockOnsetValue = document.getElementById("blockOnsetValue");
-const stats = document.getElementById("stats");
+const symbolOnsetSlider =
+    document.getElementById("symbolOnset");
+const symbolCapSlider =
+    document.getElementById("symbolCap");
+const symbolMaxSlider =
+    document.getElementById("symbolMax");
+const blockOnsetSlider =
+    document.getElementById("blockOnset");
+const blockCapSlider =
+    document.getElementById("blockCap");
+const blockMaxSlider =
+    document.getElementById("blockMax");
+const value =
+    document.getElementById("value");
+const symbolOnsetValue =
+    document.getElementById("symbolOnsetValue");
+const symbolCapValue =
+    document.getElementById("symbolCapValue");
+const symbolMaxValue =
+    document.getElementById("symbolMaxValue");
+const blockOnsetValue =
+    document.getElementById("blockOnsetValue");
+const blockCapValue =
+    document.getElementById("blockCapValue");
+const blockMaxValue =
+    document.getElementById("blockMaxValue");
+const input =
+    document.getElementById("input");
+const output =
+    document.getElementById("output");
+const stats =
+    document.getElementById("stats");
 function clamp(num, min, max) {
     return Math.max(min, Math.min(max, num));
 }
-function calculateSymbolChance(integrity, symbolOnset) {
-    if (integrity >= symbolOnset) {
+function calculateChance(
+    integrity,
+    onset,
+    max,
+    cap
+) {
+    if (integrity >= onset) {
         return 0;
     }
-    if (symbolOnset <= 0) {
-        return 0.5;
+    if (onset === max) {
+        return integrity < onset
+            ? cap
+            : 0;
+    }
+    if (integrity <= max) {
+        return cap;
     }
     const progress =
-        (symbolOnset - integrity) / symbolOnset;
-    return clamp(progress * 0.5, 0, 0.5);
+        (onset - integrity) /
+        (onset - max);
+
+    return clamp(
+        progress * cap,
+        0,
+        cap
+    );
 }
-function calculateBlockChance(integrity, blockOnset) {
-    if (integrity >= blockOnset) {
-        return 0;
-    }
-    if (blockOnset <= 0) {
-        return 1;
-    }
-    const progress =
-        (blockOnset - integrity) / blockOnset;
-    return clamp(progress, 0, 1);
+function calculateSymbolChance(
+    integrity,
+    symbolOnset,
+    symbolMax,
+    symbolCap
+) {
+    return calculateChance(
+        integrity,
+        symbolOnset,
+        symbolMax,
+        symbolCap
+    );
+}
+function calculateBlockChance(
+    integrity,
+    blockOnset,
+    blockMax,
+    blockCap
+) {
+    return calculateChance(
+        integrity,
+        blockOnset,
+        blockMax,
+        blockCap
+    );
 }
 function randomSymbol() {
     return symbols[
-        Math.floor(Math.random() * symbols.length)
+        Math.floor(
+            Math.random() * symbols.length
+        )
     ];
 }
 function corruptText(
     text,
     integrity,
     symbolOnset,
-    blockOnset
+    symbolMax,
+    symbolCap,
+    blockOnset,
+    blockMax,
+    blockCap
 ) {
     const symbolChance =
         calculateSymbolChance(
             integrity,
-            symbolOnset
+            symbolOnset,
+            symbolMax,
+            symbolCap
         );
     const blockChance =
         calculateBlockChance(
             integrity,
-            blockOnset
+            blockOnset,
+            blockMax,
+            blockCap
         );
     let result = "";
     for (const char of text) {
@@ -126,10 +213,16 @@ function corruptText(
             continue;
         }
         let newChar = char;
-        if (Math.random() < blockChance) {
+        if (
+            Math.random() <
+            blockChance
+        ) {
             newChar = "█";
         }
-        else if (Math.random() < symbolChance) {
+        else if (
+            Math.random() <
+            symbolChance
+        ) {
             newChar = randomSymbol();
         }
         result += newChar;
@@ -141,23 +234,43 @@ function update() {
         Number(integritySlider.value);
     const symbolOnset =
         Number(symbolOnsetSlider.value);
+    const symbolCap =
+        Number(symbolCapSlider.value) / 100;
+    const symbolMax =
+        Number(symbolMaxSlider.value);
     const blockOnset =
         Number(blockOnsetSlider.value);
+    const blockCap =
+        Number(blockCapSlider.value) / 100;
+    const blockMax =
+        Number(blockMaxSlider.value);
     value.textContent =
         integrity + "%";
     symbolOnsetValue.textContent =
         symbolOnset + "%";
+    symbolCapValue.textContent =
+        Math.round(symbolCap * 100) + "%";
+    symbolMaxValue.textContent =
+        symbolMax + "%";
     blockOnsetValue.textContent =
         blockOnset + "%";
+    blockCapValue.textContent =
+        Math.round(blockCap * 100) + "%";
+    blockMaxValue.textContent =
+        blockMax + "%";
     const symbolChance =
         calculateSymbolChance(
             integrity,
-            symbolOnset
+            symbolOnset,
+            symbolMax,
+            symbolCap
         );
     const blockChance =
         calculateBlockChance(
             integrity,
-            blockOnset
+            blockOnset,
+            blockMax,
+            blockCap
         );
     stats.textContent =
         "Symbol chance: " +
@@ -170,7 +283,11 @@ function update() {
             input.value,
             integrity,
             symbolOnset,
-            blockOnset
+            symbolMax,
+            symbolCap,
+            blockOnset,
+            blockMax,
+            blockCap
         );
 }
 integritySlider.addEventListener(
@@ -181,7 +298,23 @@ symbolOnsetSlider.addEventListener(
     "input",
     update
 );
+symbolCapSlider.addEventListener(
+    "input",
+    update
+);
+symbolMaxSlider.addEventListener(
+    "input",
+    update
+);
 blockOnsetSlider.addEventListener(
+    "input",
+    update
+);
+blockCapSlider.addEventListener(
+    "input",
+    update
+);
+blockMaxSlider.addEventListener(
     "input",
     update
 );
